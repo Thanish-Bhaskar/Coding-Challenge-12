@@ -1,122 +1,112 @@
-// U08201790
-function main() {       
-    
-    d3.csv('mock_stock_data.csv').then(
-        function(data) {
-            // Extract each company's data
-            var appleData= data.filter(function(d) {return d.Stock === "Apple" })
-            var googleData= data.filter(function(d) {return d.Stock === "Google" })
-            
-            var stockNames = ['Apple', 'Google']        
-            // Make a  stock select dropdown
-            var stockSelect = d3.select("#stockSelect");
-            stockNames.forEach(function(name){
-                stockSelect.append("option").text(name).attr("value", name)
+document.addEventListener("DOMContentLoaded", function() {
+
+    // Create the SVG element in the DOM
+    const svg = d3.select("body").append("svg")
+        .attr("id", "chart")
+        .attr("width", 600)
+        .attr("height", 600);
+
+    function dashboard() {
+        d3.csv('mock_stock_data.csv', d3.autoType).then(function(d) {
+            const uniqueStocks = [...new Set(d.map(item => item.Stock))];
+            const stockSelect = d3.select("#stockSelect");
+
+            uniqueStocks.forEach(stock => {
+                stockSelect.append("option").text(stock).attr("value", stock);
             });
-            
-            // Initial chart with the Apple stock            
-            updateChart(appleData, 'Apple')
-            
-            // Update chart when changing a different stock
-            document.getElementById('stockSelect').addEventListener('change', event=> {
-                const stockName =  document.getElementById('stockSelect').value;
 
-                if (stockName === 'Apple'){                    
-                    updateChart(appleData, stockName)
-                } else if (stockName === 'Google'){
-                    updateChart(googleData, stockName)
-                }
-            })
+            document.getElementById('filterButton').addEventListener('click', function() {
+                const stockName = document.getElementById('stockSelect').value;
+                const startDate = new Date(document.getElementById('startDate').value);
+                const endDate = new Date(document.getElementById('endDate').value);
 
-            // Create a function to make interactive bar chart based on the filtered data
-            function updateChart(filteredData, company) {
-                // Remove SVG
-                d3.select("body").select("svg").remove();   
+                const filteredData = d.filter(element => {
+                    const date = new Date(element.Date);
+                    return element.Stock === stockName && date >= startDate && date <= endDate;
+                });
 
-                // Create SVG
-                var svgWidth = 600, svgHeight = 600;
-                var margin = 200, width = svgWidth - margin, height = svgHeight - margin 
-                
-                var svg = d3.select('body').append('svg')
-                                            .attr('width', svgWidth)
-                                            .attr('height', svgHeight)
-                
-                var xScale = d3.scaleBand().range([0, width]).padding(0.4)
-                var yScale = d3.scaleLinear().range([height, 0])
+                drawChart(filteredData);
+            });
 
-                var g = svg.append('g').attr('transform', 'translate(100, 100)')
-                
-                xScale.domain(filteredData.map(function(d){return d.Date}))
-                yScale.domain([0, d3.max(filteredData, function(d){return d.Price})])
+            function drawChart(data) {
+                d3.select("#chart").selectAll("*").remove();
 
-                // Create title
-                svg.append('text')
-                    .attr('transform', 'translate(100, 0)')
-                    .attr('x', 50).attr('y', 50)
-                    .attr('font-size', '24px ')
-                    .text(`${company} Stock Price Overtime`)
-            
-                // Create x-axis
-                g.append('g').attr('transform', `translate(0, ${height})`)
-                        .call(d3.axisBottom(xScale))
-                // Create y-axis and label
-                g.append('g').call(d3.axisLeft(yScale).tickFormat(function(d){return `$${d}`}).ticks(10))
-                            .append('text').attr('transform', 'rotate(-90)')
-                            .attr('x',-150).attr('dy','-5em').attr('text-anchor','end')
-                            .attr('stroke','black')
-                            .text('Stock Price in USD')
-    
-                // Create bars
-                g.selectAll('.bar')
-                    .data(filteredData)
-                    .enter().append('rect')
-                    .attr('class','bar')
-                    .on('mouseover', onMouseOver) 
-                    .on('mouseout', onMouseOut)
-                    .attr('x', function(d){ return xScale(d.Date)})
-                    .attr('y', function(d){ return yScale(d.Price)})
-                    .attr("width", xScale.bandwidth())
-                    .transition()
-                    .ease(d3.easeLinear)
-                    .duration(500)
-                    .delay(function(d,i){return i * 50})
-                    .attr('height', function(d){return height - yScale(d.Price)})
-                
-                // Create a function for 'mouseover' listerner
-                function onMouseOver(d, i){
-                    // Get bar's x and y coors, then augment for the tooltip
-                    var xPos = parseFloat(d3.select(this).attr('x')) + xScale.bandwidth()/2;
-                    var yPos = parseFloat(d3.select(this).attr('y'))/2 + height/2;
-                    //Update the tooltip
-                    d3.select("#tooltip")
-                        .style("left", xPos+'px').style('top', yPos+'px')
-                        .select('#value').text(`$${i.Price}`)
-                    //Display the tooltip
-                    d3.select('#tooltip',).classed('hidden', false)
-                    //Highlight the bar
-                    d3.select(this).attr('class', 'highlight')
-                    //Add animation 
-                    d3.select(this).transition() 
-                                    .duration(500)
-                                    .attr('width', xScale.bandwidth()+5)
-                                    .attr('y', function(d){return yScale(d.Price) - 10})
-                                    .attr('height', function(d){ return height - yScale(d.Price)+10})
-                }
-                
-                // Create a function for 'mouseout' listerner
-                function onMouseOut(d, i){
-                    //Change the bar's color to the original color
-                    d3.select(this).attr('class', 'bar')
-                    //Revert the animation
-                    d3.select(this).transition()
-                                    .duration(500)
-                                    .attr('width', xScale.bandwidth())
-                                    .attr('y', function(d){return yScale(d.Price)})
-                                    .attr('height', function(d){return height - yScale(d.Price)})
-                    //Hide the tooltip
-                    d3.select('#tooltip',).classed('hidden', true)
-                }
-            }            
-        }
-    )
-}
+                const margin = { top: 20, right: 30, bottom: 30, left: 40 },
+                    width = +svg.attr("width") - margin.left - margin.right,
+                    height = +svg.attr("height") - margin.top - margin.bottom,
+                    g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+
+                const x = d3.scaleTime()
+                    .domain(d3.extent(data, d => new Date(d.Date)))
+                    .range([0, width]);
+
+                const y = d3.scaleLinear()
+                    .domain([0, d3.max(data, d => d.Price)])
+                    .nice()
+                    .range([height, 0]);
+
+                const line = d3.line()
+                    .x(d => x(new Date(d.Date)))
+                    .y(d => y(d.Price));
+
+                g.append("g")
+                    .attr("transform", `translate(0,${height})`)
+                    .call(d3.axisBottom(x));
+
+                g.append("g")
+                    .call(d3.axisLeft(y))
+                    .append("text")
+                    .attr("fill", "#000")
+                    .attr("transform", "rotate(-90)")
+                    .attr("y", 6)
+                    .attr("dy", "0.71em")
+                    .attr("text-anchor", "end")
+                    .text("Price ($)");
+
+                g.append("path")
+                    .datum(data)
+                    .attr("fill", "none")
+                    .attr("stroke", "steelblue")
+                    .attr("stroke-width", 1.5)
+                    .attr("d", line);
+
+                // Add tooltip
+                const tooltip = d3.select("body").append("div")
+                    .style("opacity", 0)
+                    .style("position", "absolute");
+
+                g.selectAll("dot")
+                    .data(data)
+                    .enter().append("circle")
+                    .attr("r", 5)
+                    .attr("cx", d => x(new Date(d.Date)))
+                    .attr("cy", d => y(d.Price))
+                    .on("mouseover", function(event, d) {
+                        tooltip.transition()
+                            .duration(200)
+                            .style("opacity", .9);
+                        tooltip.html(`Stock: ${d.Stock}<br/>Date: ${d.Date}<br/>Price: ${d.Price}`)
+                            .style("left", (event.pageX + 5) + "px")
+                            .style("top", (event.pageY - 28) + "px");
+                    })
+                    .on("mouseout", function(d) {
+                        tooltip.transition()
+                            .duration(500)
+                            .style("opacity", 0);
+                    });
+            }
+
+            // Initial draw with default values
+            const initialStockName = uniqueStocks[0];
+            const initialStartDate = new Date('2023-01-01');
+            const initialEndDate = new Date('2023-12-31');
+            const initialFilteredData = d.filter(element => {
+                const date = new Date(element.Date);
+                return element.Stock === initialStockName && date >= initialStartDate && date <= initialEndDate;
+            });
+
+            drawChart(initialFilteredData);
+        });
+    }
+    dashboard();
+});

@@ -2,23 +2,24 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <script src="https://d3js.org/d3.v7.min.js"></script>    
-    <script src="example.js"></script> 
-    <link rel="stylesheet" href="style.css">             
-    <title>Dynamic Data Visualization Dashboard</title>         
-    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Data Visualization</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://d3js.org/d3.v6.min.js"></script>
 </head>
-<body onload="main()">
-   <label for="stockSelect">Select Stock:</label>
-   <select id="stockSelect"></select><br>
+<body>
+    <div>
+        <label for="stockSelect">Select Stock:</label>
+        <select id="stockSelect"></select>
 
-   <div id="tooltip" class="hidden">
-       <p><strong>Bar Value</strong></p>
-       <p><span id="value">100</span></p>
-   </div>
-   <!-- <label for="dateRange">Date Range:</label>
-       <input type="date" id="startDate">
-       <input type="date" id="endDate">
-       <button id="filterButton">Filter</button> -->
+        <label for="startDate">Start Date:</label>
+        <input type="date" id="startDate">
+
+        <label for="endDate">End Date:</label>
+        <input type="date" id="endDate">
+
+        <button id="filterButton">Filter</button>
+    </div>
+    <script src="example.js"></script>
 </body>
 </html>
